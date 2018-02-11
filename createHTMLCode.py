@@ -105,7 +105,6 @@ class continuousTimeObject(timeObject):
 class singleTimeObject(timeObject):
     def __init__(self,day,month,year,beginHOUR,beginMINUTE,endHOUR,endMINUTE,eventName):
         timeObject.__init__(self,0,str(str(beginHOUR) + ":" + str(beginMINUTE)),str(str(endHOUR) + ":" + str(endMINUTE)),eventName)
-#eigentlich vorher noch day, month,year auf Format prüfen
         self.timeSTRUCT = time.struct_time((int(year),int(month),int(day),int(beginHOUR),int(beginMINUTE),0,0,0,0))
         self.timeUNIX = time.mktime(self.timeSTRUCT)
         self.BeginHour = beginHOUR
