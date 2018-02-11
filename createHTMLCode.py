@@ -1,5 +1,44 @@
+"""
+Dieses Skript berechnet aus den Eingaben des Nutzers die Daten für sich wiederholende Events (bspw. wöchentlich) und gibt
+die Eventsammlung als HTML-Code aus. 
+Es gibt zwei verschiede Eventtypen, welche als eigene Klassen angelegt werden: wiederkehrende Events 
+(continuousTimeObject) und einzeln auftretende Events (singleTimeObject). Diese beiden Klassen erben von der Superklasse timeObject.
+
+Klasse timeObject:
+	Attribute:
+		timeUNIX : 		speichert aktuellen Unix-Timestamp (Int)
+		timeSTRUCT: 	speichert Unix-Timestamp im struct-Format (Struct)
+		RepeatInSec:	Wiederholdauer in Sekunden (Int)
+		PlannedDates:	Liste mit den berechneten Daten der Events (List)
+		BeginHour:		Zeitpunkt des Beginns in Stunden (Int)
+		BeginMin:		Zeitpunkt des Beginns in Minuten (Int)
+	
+	Klassenmethoden:
+		addSec: 		Addiert Sekunden auf timeUNIX (inkl. timeSTRUCT)
+		incrToTime:		Setzt timeUNIX bzw. timeSTRUCT vom aktuellen zeitpunkt auf den ersten berechneten Zeitpunkt
+		
+Klasse continuousTimeObject (erbt von timeObject)
+	Attribute:
+		dayOfWeek:		Speichert den Wochentag für wöchentlich wiederkehrende Events
+		
+	Klassenmethoden:
+		incrToDayOfWeek:Setzt timeUNIX bzw. timeSTRUCT auf das nächste Datum, das zum Wochentag (dayOfWeek) passt
+		createDataTable:Berechnet wiederholende Daten des aktuellen Monats und speichert diese in PlannedDates
+		setTimeObject:	Setzt timeUNIX (inkl. timeSTRUCT) auf bestimmten Timestamp und erhöht, bis dayOfWeek erreicht ist
+
+Klasse singleTimeObject erbt von timeObject
+	Bemerkung: 	Da sich die Struktur zu wiederholenden Events unterscheidet (hier sind Daten im Struct-Format notwendig),
+				muss eine separate Klasse erstellt werden, in welcher der Konstruktor entsprechend angepasst werden kann
+	
+	Attribute:	keine weiteren
+	
+	Methoden:	
+		createDataTable:Analog zu oben, einelementige Liste
+"""
+
 import time
 import re
+from pip._vendor.progress import counter
 
 class timeObject():
 	def __init__(self,repeatInSec,begin,end,eventName):
@@ -69,7 +108,7 @@ class singleTimeObject(timeObject):
 #eigentlich vorher noch day, month,year auf Format prüfen
         self.timeSTRUCT = time.struct_time((int(year),int(month),int(day),int(beginHOUR),int(beginMINUTE),0,0,0,0))
         self.timeUNIX = time.mktime(self.timeSTRUCT)
-        self. BeginHour = beginHOUR
+        self.BeginHour = beginHOUR
         self.BeginMin = beginMINUTE
         self.EndHour = endHOUR
         self.EndMin = endMINUTE
@@ -77,49 +116,35 @@ class singleTimeObject(timeObject):
     def createDataTable(self):
         self.PlannedDates.append(self.timeUNIX)
         print(self.timeSTRUCT)
-        
+
+# nimmt Dictionary bestehend aus Unix-Timestamp-timeObject-Zuordnung und generiert hieraus HTML-Code        
 def writeOutput(dic):
 	currentDate = time.time()
 	currentDate = time.gmtime(currentDate)
 	print(currentDate)
 	translateDays = {"Monday" : "Montag", "Tuesday" : "Dienstag" , "Wednesday" : "Mittwoch" , "Thursday" : "Donnerstag" , "Friday" : "Freitag" , "Saturday" : "Samstag" , "Sunday" : "Sonntag"}
+	translateMonths = {"January" : "Januar", "February" : "Februar", "March" : "März", "April" : "April", "May" : "Mai", "June" : "Juni", "July" : "Juli", "August" : "August", "September" : "September", "October" : "Oktober", "November" : "November" , "December" : "Dezember"}
+	timeFormat = {"0" : "00" , "1" : "01", "2" : "02", "3" : "03" ,"4" : "04", "5" : "05", "6" : "06", "7" : "07", "8" : "08", "9" : "09","10" : "10", "11" : "11", "12" : "12", "13" : "13", "14" : "14", "15" : "15", "16" : "16", "17" : "17", "18" : "18", "19" : "19", "20" : "20", "21" : "21", "22" : "22", "23" : "23", "24" : "24", "25" : "25", "26" : "26", "27" : "27", "28" : "28", "29" : "29", "30" : "30", "31" : "31", "32" : "32", "33" : "33", "34" : "34", "35" : "35", "36" : "36", "37" : "37", "38" : "38", "39" : "39", "40" : "40", "41" : "41", "42" : "42", "43" : "43", "44" : "44", "45" : "45", "46" : "46", "47" : "47", "48" : "48", "49" : "49", "50" : "50", "51" : "51", "52" : "52", "53" : "53", "54" : "54", "55" : "55", "56" : "56", "57" : "57", "58" : "58", "59" : "59"}
 	tmpString = "Schovelkoten_HP_EVENTCODE_" + str(currentDate.tm_mday) + "-" + str(currentDate.tm_mon) + "-" + str(currentDate.tm_year) + ".txt"
 	fobj = open(tmpString, "w")
 	#fobj.write("Hallo")
 	for dicElement in sorted(dic.keys()):
-		tmpVar = time.strftime("%A" , time.gmtime(int(dicElement))) 
-		bufferString = '<div class="title-wrapper"><strong>' + translateDays[tmpVar] + "\n"
+		tmpVar1 = time.strftime("%A" , time.gmtime(int(dicElement))) 
+		tmpVar2 = time.strftime("%B", time.gmtime(int(dicElement)))
+		tmpVar3 = time.strftime("%d", time.gmtime(int(dicElement)))
+		bufferString = '<div class="title-wrapper"><strong>' + translateDays[tmpVar1] + ", " + tmpVar3 + ". " + translateMonths[tmpVar2] + "</strong></div>\n"
+		bufferString = bufferString + '<div class="title-wrapper">' + timeFormat[str(dic[dicElement].BeginHour)] + ":" + timeFormat[str(dic[dicElement].BeginMin)] + "-" + timeFormat[str(dic[dicElement].EndHour)] + ":" + timeFormat[str(dic[dicElement].EndMin)] + '<span class="event-title" style="color: #a32929;">&nbsp;</span></div>' + "\n"
+		bufferString = bufferString + '<div class="title-wrapper"><span class="event-title" style="color: #a32929;">&nbsp;' + str(dic[dicElement].EventName) + "</span></div>\n"
+		bufferString = bufferString + '<div class="title-wrapper"></div>\n'
 		fobj.write(bufferString)	
 	fobj.close()
 		
-		
+#löscht Eintrag aus Dictionary	
 def deleteDictEntry(dic):
     delDictEntry = input('Welches Datum soll geloescht werden (Unix timestamp)? :')
     del dic[int(delDictEntry)]
 
-#wahrscheinlich unnötig    
-def insertSinglEvent(dic):
-    date = input('Zu welchem Datum soll ein Event angelegt werden? (DD:MM:YYYY)')
-    res_date = re.search("(\d\d)[\.\:\,\;\-](\d\d)[\.\:\,\;\-](\d\d\d\d)",date)
-    while not res_date.group(1) or res_date.group(2) or res_date.group(3):
-        date = input('Die Eingabe war fehlerhaft. Event bitte erneut eigeben? (DD:MM:YYYY)')
-        res_date = re.search("(\d\d)[\.\:\,\;\-\/](\d\d)[\.\:\,\;\-\/](\d\d\d\d)",date)
-    time_begin = input('Wann startet das Event? (HH:MM)')
-    res_begin = re.search("(\d\d)[\.\:\,\;\-\/](\d\d)",time_begin)
-    while not (res_begin.group(1) or res_begin.group(2)):
-        time_begin = input('Die Eingabe war fehlerhaft. Startzeit bitte erneut eigeben? (DD:MM:YYYY)')
-        res_begin = re.search("(\d\d)[\.\:\,\;\-\/](\d\d)",time_begin)
-    time_end = input('Wann endet das Event? (HH:MM)')
-    res_end = re.search("(\d\d)[\.\:\,\;\-\/](\d\d)",time_end)
-    while not (res_end.group(1) or res_end.group(2)):
-        time_end = input('Die Eingabe war fehlerhaft. Endzeit bitte erneut eigeben? (DD:MM:YYYY)')
-        res_end = re.search("(\d\d)[\.\:\,\;\-\/](\d\d)",time_end)
-    if res_date and res_begin and res_end:
-        singleTimeElement=singleTimeObject(int(res_date.group(1)),int(res_date.group(2)),int(res_date.group(3)),int(res_begin.group(1)),int(res_begin.group(2)),0,0,0,0)
-    else:
-        print('Match hat nicht funktioniert.')
-#hier muss noch der Rest gefüllt werden
-
+# Einlesen der Daten für wiederkehrende Events
 def createContinuousEvents():
     global userInformation
     global answer
@@ -136,11 +161,12 @@ def createContinuousEvents():
 	    m = input('Event ' + str(counter) + ' - Eventname:')
 	    counter = counter + 1
 	    x = continuousTimeObject(int(i),int(j),k,l,m)
-	    x.setTimeObject(x.timeUNIX-16*86400)	#setzt UNIXtimestamp um 16 Tage zurück
+	    x.setTimeObject(x.timeUNIX)	#setzt UNIXtimestamp
 	    x.createDataTable()
 	    userInformation.append(x)
 	    answer = input('Soll ein weiteres wiederkehrendes Event angelegt werden?:')
 
+# Methode zum Einlesen für einzelne Events
 def createSingleEvents():
     global userInformation
     global answer
@@ -175,22 +201,74 @@ def createSingleEvents():
         userInformation.append(x)
         answer = input('Soll ein weiteres SingleTime Event angelegt werden?:')
 
-def getEventInformation():
-    global userInformation
-    userInformation = []
-    global answer
-    answer = 'y'
-    global counter
-    counter = 1
-    createContinuousEvents()
-    createSingleEvents()
-    for x in userInformation:
-        for y in x.PlannedDates:
-            print(y)
-            print(time.gmtime(y))
-            #print(y.timeSTRUCT)
-    
+# Methode zum Löschen von Events aus PlannedDates
+def deleteEventFromList():
+	global userInformation
+	global counter
+	answer = input('Soll ein Event gelöscht werden? (y/n):')
+	while answer != 'n':
+		delEvent = int(input('Zu welchem Timestamp soll ein Event gelöscht werden?:'))
+		for x in userInformation:
+			for y in x.PlannedDates:
+				if int(y) == int(delEvent):
+					x.PlannedDates.remove(y)
+		answer = input('Soll ein Event gelöscht werden? (y/n):')
 
+
+
+
+
+# MAIN
+
+global userInformation
+userInformation = []
+global answer
+answer = 'y'
+global counter
+counter = 1
+createContinuousEvents()
+createSingleEvents()
+for x in userInformation:			# alle bisher erzeugten Elemente werden ausgegeben, um Löschen zu ermöglichen
+	for y in x.PlannedDates:
+		print(y)
+		print(time.gmtime(y))
+		#print(y.timeSTRUCT)		
+deleteEventFromList()
+
+UNIXTimeTable = {}
+#tmp_iter1 = 0
+for x in userInformation:
+	print(x.timeSTRUCT)
+	print('###')
+	#tmp_iter2 = 0
+	for y in x.PlannedDates:
+		UNIXTimeTable[y] = x				#legt Dictionary mit UNIXTimestamps als keys: UNIXTimeTable = {151715880 : 0x01fA...}
+
+writeOutput(UNIXTimeTable)
+
+
+###############
+#	TESTS	  #
+###############
+
+#Test zum Löschen von Dictionary-Entries
+"""
+print(UNIXTimeTable)   
+deleteDictEntry(UNIXTimeTable)
+print(UNIXTimeTable)
+"""
+
+#Test der erzeugten Liste PlannedDates
+"""
+print('####')
+for x in K1.PlannedDates:
+    print(time.gmtime(x))
+"""
+
+#Test der Klassenfunktion addSec
+"""
+K1.addSec()
+"""
 
 #Speziellen UNIXTimeStemp für erzeugtes timeObject setzen
 """
@@ -201,6 +279,7 @@ print(K1.timeSTRUCT)
 
 #Create Test Data 
 """
+userInformation = []
 x=continuousTimeObject(6,604800,'16:00','18:00','HSP')
 x.setTimeObject(x.timeUNIX-16*86400)
 x.createDataTable()
@@ -220,7 +299,7 @@ for x in userInformation:
 	print('###')
 	#tmp_iter2 = 0
 	for y in x.PlannedDates:
-		UNIXTimeTable[y] = x				#Dictionary mit UNIXTimestamps als keys
+		UNIXTimeTable[y] = x				#legt Dictionary mit UNIXTimestamps als keys: UNIXTimeTable = {151715880 : 0x01fA...}
 	
 for i in sorted(UNIXTimeTable.keys()):
 	#print(UNIXTimeTable[i].timeUNIX)
@@ -231,63 +310,6 @@ for i in sorted(UNIXTimeTable.keys()):
     print(UNIXTimeTable[i].EndHour)
     print(UNIXTimeTable[i].EndMin)
     print(UNIXTimeTable[i].EventName)
-"""
-
-# MAIN
-
-getEventInformation()
-
-"""
-while answer != 'n':
-	i = input('Event ' + str(counter) + ' - Wochentag (0-6):')
-	print()
-	j = input('Event ' + str(counter) + ' - Wiederholung (Woche = 604800):')
-	print()
-	k = input('Event ' + str(counter) + ' - Eventname:')
-	print()
-	l = input('Event ' + str(counter) + ' - Beginn:')
-	print()
-	m = input('Event ' + str(counter) + ' - Ende:')
-	counter = counter + 1
-	x = timeObject(int(i),int(j),k,l,m)
-	x.setTimeObject(x.timeUNIX-24*86400)	#setzt UNIXtimestamp um 24 Tage zurück
-	x.createDataTable()
-	userInformation.append(x)
-	answer = input('Soll ein weiteres Event angelegt werden?:')
-"""
-
-
-
-#Test zum Löschen von Dictionary-Entries
-
-
-#print(UNIXTimeTable)   
-#deleteDictEntry(UNIXTimeTable)
-#print(UNIXTimeTable)
-
-#writeOutput(UNIXTimeTable)
-
-#print('#################')		
-#for x in UNIXTimeTable:
-#	print(time.gmtime(x))
-
-#print('#################')		
-#for x in UNIXTimeTable:
-#	print(time.gmtime(x))
-
-
-#Test der erzeugten Liste PlannedDates
-
-"""
-print('####')
-for x in K1.PlannedDates:
-    print(time.gmtime(x))
-"""
-
-#Test der Klassenfunktion addSec
-
-"""
-K1.addSec()
 """
 
 
